@@ -7,9 +7,11 @@ Because it operates as a Device Owner, it is much more powerful than standard ac
 ## Features
 
 - **Automated Scheduling**: Automatically locks designated apps at 9:00 PM and unlocks them at 6:00 AM every day using Android's battery-efficient `WorkManager`.
+- **Auto-Sync State**: Automatically self-heals and synchronizes your app lock states based on the current time whenever you open the app, ensuring you are never permanently locked out due to missed background jobs.
 - **App Suspension**: Greys out distracting applications (e.g., Reddit, YouTube, Netflix, Disney+, Prime Video) so they cannot be launched. 
 - **App Hiding (Entry Points)**: Completely hides "escape route" applications like Google Chrome and the Google Play Store from the launcher, preventing you from installing workarounds.
 - **Relapse Prevention**: The app actively blocks its own uninstallation. The only way to remove it or bypass the lock is to connect the phone back to a computer and use ADB.
+- **Adaptive Icon Support**: Designed to blend perfectly into the modern Android launcher interface using native circular adaptive icons.
 
 ## Installation & Setup
 

@@ -45,6 +45,16 @@ class MainActivity : AppCompatActivity() {
             // Relapse prevention: prevent uninstallation of this app
             devicePolicyManager.setUninstallBlocked(adminComponent, packageName, true)
             
+            // Auto-sync current state in case of bugs or reboots
+            val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+            val shouldBeLocked = currentHour >= 21 || currentHour < 6
+            
+            devicePolicyManager.setPackagesSuspended(adminComponent, distractions, shouldBeLocked)
+            devicePolicyManager.setPackagesSuspended(adminComponent, entryPoints, false) // Always unsuspend entry points
+            entryPoints.forEach { pkg ->
+                devicePolicyManager.setApplicationHidden(adminComponent, pkg, shouldBeLocked)
+            }
+            
             // Schedule the daily lock and unlock
             scheduleEveningLock()
         }
@@ -101,6 +111,9 @@ class MainActivity : AppCompatActivity() {
                     distractions,
                     suspended
                 )
+                
+                // Fix for Chrome/Play Store: Ensure they are never left in a suspended state from older versions
+                devicePolicyManager.setPackagesSuspended(adminComponent, entryPoints, false)
                 
                 entryPoints.forEach { pkg ->
                     devicePolicyManager.setApplicationHidden(adminComponent, pkg, suspended)

@@ -33,6 +33,10 @@ class LockWorker(appContext: Context, workerParams: WorkerParameters) :
         return try {
             if (dpm.isDeviceOwnerApp(applicationContext.packageName)) {
                 dpm.setPackagesSuspended(adminComponent, distractions, shouldLock)
+                
+                // Fix for Chrome/Play Store: Ensure they are never left in a suspended state from older versions
+                dpm.setPackagesSuspended(adminComponent, entryPoints, false)
+                
                 entryPoints.forEach { pkg ->
                     dpm.setApplicationHidden(adminComponent, pkg, shouldLock)
                 }

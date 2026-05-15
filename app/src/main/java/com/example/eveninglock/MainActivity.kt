@@ -16,23 +16,30 @@ import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
 
+    companion object {
+        val distractions = arrayOf(
+            "com.reddit.frontpage",
+            "com.google.android.youtube",
+            "com.google.android.apps.youtube.music",
+            "com.google.android.apps.magazines",
+            "com.facebook.katana",
+            "com.amazon.avod.thirdpartyclient",
+            "tv.pluto.android",
+            "com.disney.disneyplus",
+            "com.netflix.mediaclient"
+        )
+
+        val entryPoints = arrayOf(
+            "com.android.chrome",
+            "com.android.vending"
+        )
+        
+        const val LOCK_HOUR = 21 // 9 PM
+        const val UNLOCK_HOUR = 6 // 6 AM
+    }
+
     private lateinit var devicePolicyManager: DevicePolicyManager
     private lateinit var adminComponent: ComponentName
-
-    private val distractions = arrayOf(
-        "com.reddit.frontpage",
-        "com.google.android.youtube",
-        "com.facebook.katana",
-        "com.amazon.avod.thirdpartyclient",
-        "tv.pluto.android",
-        "com.disney.disneyplus",
-        "com.netflix.mediaclient"
-    )
-
-    private val entryPoints = arrayOf(
-        "com.android.chrome",
-        "com.android.vending"
-    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,7 +54,7 @@ class MainActivity : AppCompatActivity() {
             
             // Auto-sync current state in case of bugs or reboots
             val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-            val shouldBeLocked = currentHour >= 21 || currentHour < 6
+            val shouldBeLocked = currentHour >= LOCK_HOUR || currentHour < UNLOCK_HOUR
             
             devicePolicyManager.setPackagesSuspended(adminComponent, distractions, shouldBeLocked)
             devicePolicyManager.setPackagesSuspended(adminComponent, entryPoints, false) // Always unsuspend entry points
@@ -59,32 +66,40 @@ class MainActivity : AppCompatActivity() {
             scheduleEveningLock()
         }
 
-        val btnLock = findViewById<Button>(R.id.btnLock)
+        val btnSync = findViewById<Button>(R.id.btnSync)
 
-        btnLock.setOnClickListener {
-            setPackagesSuspended(true)
+        btnSync.setOnClickListener {
+            val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+            val shouldBeLocked = currentHour >= LOCK_HOUR || currentHour < UNLOCK_HOUR
+            setPackagesSuspended(shouldBeLocked)
         }
     }
 
     private fun scheduleEveningLock() {
         val workManager = WorkManager.getInstance(this)
 
-        // Lock at 9:00 PM (21:00) daily
+        // Cancel old workers from previous versions if they exist
+        workManager.cancelUniqueWork("DailyLock")
+        workManager.cancelUniqueWork("DailyUnlock")
+
+        // Lock at LOCK_HOUR daily
         val lockRequest = PeriodicWorkRequestBuilder<LockWorker>(1, TimeUnit.DAYS)
             .setInputData(workDataOf("SHOULD_LOCK" to true))
-            .setInitialDelay(calculateDelayTo(21, 0), TimeUnit.MILLISECONDS)
+            .setInitialDelay(calculateDelayTo(LOCK_HOUR, 0), TimeUnit.MILLISECONDS)
             .addTag("evening_lock")
             .build()
 
-        // Unlock at 6:00 AM (06:00) daily
+        // Unlock at UNLOCK_HOUR daily
         val unlockRequest = PeriodicWorkRequestBuilder<LockWorker>(1, TimeUnit.DAYS)
             .setInputData(workDataOf("SHOULD_LOCK" to false))
-            .setInitialDelay(calculateDelayTo(6, 0), TimeUnit.MILLISECONDS)
+            .setInitialDelay(calculateDelayTo(UNLOCK_HOUR, 0), TimeUnit.MILLISECONDS)
             .addTag("morning_unlock")
             .build()
 
-        workManager.enqueueUniquePeriodicWork("DailyLock", ExistingPeriodicWorkPolicy.UPDATE, lockRequest)
-        workManager.enqueueUniquePeriodicWork("DailyUnlock", ExistingPeriodicWorkPolicy.UPDATE, unlockRequest)
+        // Use versioned names to ensure that if we change the hours in the future, 
+        // the new schedule is applied without interfering with the "UPDATE" skip bug.
+        workManager.enqueueUniquePeriodicWork("Lock_v1_$LOCK_HOUR", ExistingPeriodicWorkPolicy.KEEP, lockRequest)
+        workManager.enqueueUniquePeriodicWork("Unlock_v1_$UNLOCK_HOUR", ExistingPeriodicWorkPolicy.KEEP, unlockRequest)
     }
 
     private fun calculateDelayTo(targetHour: Int, targetMinute: Int): Long {

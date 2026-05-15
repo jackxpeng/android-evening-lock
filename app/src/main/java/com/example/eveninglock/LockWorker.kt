@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import java.util.Calendar
 
 class LockWorker(appContext: Context, workerParams: WorkerParameters) :
     Worker(appContext, workerParams) {
@@ -13,22 +14,15 @@ class LockWorker(appContext: Context, workerParams: WorkerParameters) :
         val dpm = applicationContext.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val adminComponent = ComponentName(applicationContext, MyDeviceAdminReceiver::class.java)
         
-        // Grab the 'lock' state from the data we send to this worker
-        val shouldLock = inputData.getBoolean("SHOULD_LOCK", false)
-        val distractions = arrayOf(
-            "com.reddit.frontpage",
-            "com.google.android.youtube",
-            "com.facebook.katana",
-            "com.amazon.avod.thirdpartyclient",
-            "tv.pluto.android",
-            "com.disney.disneyplus",
-            "com.netflix.mediaclient"
-        )
+        // Use the same lists as MainActivity
+        val distractions = MainActivity.distractions
+        val entryPoints = MainActivity.entryPoints
         
-        val entryPoints = arrayOf(
-            "com.android.chrome",
-            "com.android.vending"
-        )
+        // Grab the 'lock' state from the data we send to this worker
+        // Default to a time-based check if the input data is missing for some reason
+        val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        val timeBasedLock = currentHour >= MainActivity.LOCK_HOUR || currentHour < MainActivity.UNLOCK_HOUR
+        val shouldLock = inputData.getBoolean("SHOULD_LOCK", timeBasedLock)
 
         return try {
             if (dpm.isDeviceOwnerApp(applicationContext.packageName)) {

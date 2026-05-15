@@ -6,8 +6,8 @@
     android:orientation="vertical">
 
     <Button
-        android:id="@+id/btnLock"
+        android:id="@+id/btnSync"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Lock Apps Manually" />
+        android:text="Sync Lock State" />
 </LinearLayout>
